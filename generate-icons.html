@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate App Icons</title>
+  <style>
+    body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; }
+    canvas { border: 1px solid #ddd; margin: 10px; }
+    button { background: #e63946; color: white; border: none; padding: 12px 24px;
+             font-size: 16px; border-radius: 8px; cursor: pointer; margin: 10px 0; }
+    button:hover { background: #d32f3c; }
+    .success { color: #2e7d32; font-weight: bold; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>🇯🇵 App Icon Generator</h1>
+  <p>Click the buttons below to download the required app icons:</p>
+
+  <canvas id="canvas192" width="192" height="192"></canvas>
+  <canvas id="canvas512" width="512" height="512"></canvas>
+
+  <div>
+    <button onclick="downloadIcon(192)">Download 192x192 Icon</button>
+    <button onclick="downloadIcon(512)">Download 512x512 Icon</button>
+  </div>
+
+  <div id="status"></div>
+
+  <p style="color: #666; margin-top: 30px;">
+    After downloading both icons, place them in the same folder as your expense-tracker.html file.
+    The files should be named exactly: <strong>icon-192.png</strong> and <strong>icon-512.png</strong>
+  </p>
+
+<script>
+function drawIcon(canvas) {
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+
+  // Background gradient (red to dark red - Japan theme)
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, '#e63946');
+  gradient.addColorStop(1, '#9b1727');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  // White circle (like Japanese flag)
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Yen symbol in the circle
+  ctx.fillStyle = '#e63946';
+  ctx.font = `bold ${size * 0.35}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('¥', size / 2, size / 2);
+}
+
+// Draw both icons on page load
+drawIcon(document.getElementById('canvas192'));
+drawIcon(document.getElementById('canvas512'));
+
+function downloadIcon(size) {
+  const canvas = document.getElementById('canvas' + size);
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icon-${size}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    document.getElementById('status').innerHTML =
+      `<div class="success">✓ Downloaded icon-${size}.png</div>`;
+    setTimeout(() => { document.getElementById('status').innerHTML = ''; }, 3000);
+  });
+}
+</script>
+</body>
+</html>

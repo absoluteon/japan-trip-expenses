@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Track and split expenses for your Japan trip">
+<meta name="theme-color" content="#e63946">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trip Expenses">
+<link rel="manifest" href="manifest.json">
+<title>🇯🇵 Japan Trip Expenses</title>
+<style>
+/* ============================================================
+   RESET & VARIABLES
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red: #e63946;
+  --red-dk: #9b1727;
+  --teal: #2a9d8f;
+  --blue: #457b9d;
+  --bg: #f0f2f5;
+  --w: #fff;
+  --g1: #f8f9fa;  --g2: #e9ecef;  --g3: #dee2e6;
+  --g4: #adb5bd;  --g5: #6c757d;  --g6: #495057;
+  --g7: #343a40;  --g8: #212529;
+  --r: 12px;  --rs: 8px;  --rl: 16px;
+  --sh0: 0 1px 2px rgba(0,0,0,.08);
+  --sh:  0 2px 8px rgba(0,0,0,.10);
+  --shm: 0 4px 16px rgba(0,0,0,.12);
+}
+
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--g8);
+  min-height: 100vh;
+  padding-bottom: 84px;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.hdr {
+  background: var(--w);
+  box-shadow: var(--sh0);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 11px 16px;
+}
+.hdr-in {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hdr h1 { font-size: 1.2rem; font-weight: 700; color: var(--red); }
+.hdr-btn {
+  background: var(--g1);
+  border: none;
+  border-radius: var(--rs);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 1.15rem;
+  transition: background .15s;
+}
+.hdr-btn:hover { background: var(--g2); }
+
+/* ============================================================
+   LAYOUT & TABS
+   ============================================================ */
+.app { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+
+.tabs { display: flex; gap: 5px; padding: 14px 0 6px; }
+.tab {
+  flex: 1;
+  padding: 9px 2px;
+  border: 2px solid transparent;
+  border-radius: var(--rs);
+  background: var(--w);
+  color: var(--g5);
+  font-size: .83rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: var(--sh0);
+  transition: all .18s;
+}
+.tab:hover  { border-color: #ff8fa3; color: var(--red); }
+.tab.on     { border-color: var(--red); color: var(--red); background: #fff5f5; }
+
+.pane    { display: none; }
+.pane.on { display: block; }
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.card {
+  background: var(--w);
+  border-radius: var(--r);
+  box-shadow: var(--sh0);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-weight: 700;
+  font-size: .84rem;
+  color: var(--g7);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* ============================================================
+   BALANCE CARD  (gradient hero)
+   ============================================================ */
+.bal {
+  background: linear-gradient(135deg, var(--red), var(--red-dk));
+  color: #fff;
+  border-radius: var(--rl);
+  padding: 22px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shm);
+  position: relative;
+  overflow: hidden;
+}
+/* decorative circles */
+.bal::before {
+  content: '';
+  position: absolute;
+  top: -48px; right: -42px;
+  width: 145px; height: 145px;
+  background: rgba(255,255,255,.08);
+  border-radius: 50%;
+}
+.bal::after {
+  content: '';
+  position: absolute;
+  bottom: -38px; left: -28px;
+  width: 115px; height: 115px;
+  background: rgba(255,255,255,.06);
+  border-radius: 50%;
+}
+.bal-in  { position: relative; z-index: 1; }
+.bal-lbl { font-size: .71rem; text-transform: uppercase; letter-spacing: 1px; opacity: .84; margin-bottom: 6px; }
+.bal-amt { font-size: 2.1rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 4px; }
+.bal-dir { font-size: .87rem; opacity: .9; }
+.bal-dir strong { font-weight: 700; }
+.bal-ok  { font-size: 1.05rem; opacity: .92; margin-top: 4px; }
+
+/* ============================================================
+   SETTLEMENT STRIP
+   ============================================================ */
+.stl {
+  border-radius: var(--r);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.stl.pend { background: #fff3cd; border: 1px solid #ffc107; }
+.stl.done { background: #d4edda; border: 1px solid #28a745; }
+.stl-lbl  { font-size: .78rem; color: var(--g6); margin-bottom: 2px; }
+.stl-amt  { font-weight: 700; font-size: .94rem; }
+.stl-btn  {
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: var(--rs);
+  padding: 7px 14px;
+  font-weight: 700;
+  font-size: .82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.stl-btn:hover { background: #229d8f; }
+.stl-btn.sm    { padding: 5px 10px; font-size: .75rem; }
+
+/* ============================================================
+   EXPENSE ITEM
+   ============================================================ */
+.ei {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-top: 1px solid var(--g2);
+  gap: 10px;
+}
+.ei:first-child { border-top: none; }
+.ei-L    { flex: 1; min-width: 0; }
+.ei-desc { font-weight: 600; font-size: .91rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ei-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+
+/* tags */
+.tag      { font-size: .69rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: var(--g1); color: var(--g5); }
+.tag.cat  { background: #e8f4f8; color: var(--blue); }
+.tag.p1c  { background: #e8f5e9; color: #2e7d32; }     /* person1 cash */
+.tag.p1cr { background: #e3f2fd; color: #1565c0; }     /* person1 credit */
+.tag.p2c  { background: #fff3e0; color: #e65100; }     /* person2 cash */
+.tag.p1s  { background: #e0f7fa; color: #00838f; }     /* person1 suica */
+.tag.p2s  { background: #fce4ec; color: #c62828; }     /* person2 suica */
+.tag.sp   { background: #f3e5f5; color: #6a1b9a; }     /* split badge */
+
+.ei-R     { text-align: right; flex-shrink: 0; }
+.ei-amt   { font-weight: 700; font-size: .94rem; }
+.ei-sub   { font-size: .73rem; color: var(--g5); margin-top: 1px; }
+.ei-acts  { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
+.ic       { background: none; border: none; cursor: pointer; font-size: .83rem; color: var(--g4); padding: 2px 5px; border-radius: 4px; transition: all .15s; }
+.ic:hover { color: var(--red); background: #fff0f0; }
+
+.empty { text-align: center; color: var(--g4); padding: 24px 0; font-size: .9rem; }
+
+/* ============================================================
+   HISTORY  (collapsible day groups)
+   ============================================================ */
+.hday      { background: var(--w); border-radius: var(--r); box-shadow: var(--sh0); margin-bottom: 8px; overflow: hidden; }
+.hday-hd   { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; cursor: pointer; user-select: none; -webkit-user-select: none; transition: background .15s; }
+.hday-hd:hover { background: var(--g1); }
+.hday-hd-L { display: flex; align-items: center; gap: 9px; }
+.hday-date { font-weight: 700; font-size: .9rem; }
+.hday-dsub { font-size: .73rem; color: var(--g5); }
+.hday-hd-R { display: flex; align-items: center; gap: 8px; }
+
+/* status badges */
+.sb      { font-size: .69rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.sb.done { background: #d4edda; color: #155724; }
+.sb.pend { background: #fff3cd; color: #664d03; }
+
+/* chevron */
+.chev      { font-size: .75rem; color: var(--g4); transition: transform .2s; display: inline-block; }
+.chev.open { transform: rotate(180deg); }
+
+.hday-body      { padding: 0 14px 12px; display: none; }
+.hday-body.open { display: block; }
+.hday-stl       { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--g2); }
+
+/* ============================================================
+   FAB  (floating action button)
+   ============================================================ */
+.fab {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  box-shadow: var(--shm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  transition: background .15s, transform .12s;
+  line-height: 1;
+}
+.fab:hover  { background: var(--red-dk); transform: scale(1.07); }
+.fab:active { transform: scale(.95); }
+
+/* ============================================================
+   OVERLAY & BOTTOM-SHEET MODAL
+   ============================================================ */
+.ov {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.ov.on { opacity: 1; pointer-events: auto; }
+
+.modal {
+  background: var(--w);
+  width: 100%;
+  max-width: 640px;
+  border-radius: 20px 20px 0 0;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 10px 20px 36px;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+.ov.on .modal { transform: translateY(0); }
+
+.modal-drag  { width: 44px; height: 5px; background: var(--g3); border-radius: 3px; margin: 0 auto 14px; }
+.modal-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; color: var(--g8); }
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+.fg       { margin-bottom: 14px; }
+.fg label, .flbl {
+  display: block;
+  font-size: .77rem;
+  font-weight: 700;
+  color: var(--g5);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 5px;
+}
+.fi, .fs {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--g3);
+  border-radius: var(--rs);
+  font-size: .94rem;
+  color: var(--g8);
+  background: var(--w);
+  transition: border-color .2s;
+}
+.fi:focus, .fs:focus {
+  outline: none;
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(230,57,70,.12);
+}
+/* custom select arrow */
+.fs {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c757d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+.f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ============================================================
+   PAID-BY SELECTOR  (5 toggle cards – wraps on very small screens)
+   ============================================================ */
+.paid-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.paid-opt  {
+  flex: 1;
+  padding: 9px 4px;
+  border: 2px solid var(--g3);
+  border-radius: var(--rs);
+  background: var(--w);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  font-size: .79rem;
+  color: var(--g5);
+}
+.paid-opt.on { border-color: var(--red); background: #fff5f5; color: var(--red); font-weight: 600; }
+.paid-opt .pn { font-weight: 700; font-size: .84rem; display: block; margin-bottom: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paid-opt .pm { font-size: .7rem; opacity: .75; }
+
+/* ============================================================
+   SPLIT TOGGLE  (Personal / Shared)
+   ============================================================ */
+.sp-tog  { display: flex; gap: 8px; }
+.sp-opt  {
+  flex: 1;
+  padding: 9px;
+  border: 2px solid var(--g3);
+  border-radius: var(--rs);
+  background: var(--w);
+  cursor: pointer;
+  text-align: center;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--g5);
+  transition: all .15s;
+}
+.sp-opt.on { border-color: var(--red); background: #fff5f5; color: var(--red); }
+
+/* ============================================================
+   SPLIT MODE TOGGLE  (% or ¥)
+   ============================================================ */
+.sp-mode-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sp-mode-row .flbl { margin-bottom: 0; }
+.sp-mode     { display: flex; gap: 3px; background: var(--g2); border-radius: 18px; padding: 3px; }
+.sp-mode-opt {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--g5);
+  transition: all .15s;
+}
+.sp-mode-opt.on { background: var(--w); color: var(--red); box-shadow: var(--sh0); }
+
+/* ============================================================
+   SPLIT RATIO  (two inputs – sum to 100 % or total ¥)
+   ============================================================ */
+.sp-wrap     { display: none; }
+.sp-wrap.vis { display: block; }
+.sp-ratio    { display: flex; align-items: flex-end; gap: 8px; }
+.sriw        { flex: 1; }
+.sriw .sn    { font-size: .77rem; font-weight: 600; color: var(--g5); margin-bottom: 3px; }
+.sriw-inp    { position: relative; }
+.sriw-inp input {
+  width: 100%;
+  padding: 9px 28px 9px 10px;
+  border: 1.5px solid var(--g3);
+  border-radius: var(--rs);
+  font-size: .96rem;
+  font-weight: 700;
+  color: var(--g8);
+  background: var(--w);
+  transition: border-color .2s;
+}
+.sriw-inp input:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(230,57,70,.12); }
+.sriw-inp .pct { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--g5); font-size: .84rem; pointer-events: none; }
+.sp-vs   { font-weight: 700; color: var(--g5); font-size: .9rem; margin-bottom: 9px; }
+.sp-amts { display: flex; justify-content: space-between; margin-top: 6px; font-size: .77rem; color: var(--g5); }
+.sp-amts span { font-weight: 600; color: var(--g6); }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--rs);
+  font-size: .92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  text-align: center;
+}
+.btn:active         { transform: scale(.98); }
+.btn-pri            { background: var(--red);   color: #fff; }
+.btn-pri:hover      { background: var(--red-dk); }
+.btn-sec            { background: var(--g2);    color: var(--g7); }
+.btn-sec:hover      { background: var(--g3); }
+.btn-grn            { background: linear-gradient(135deg, #2e7d32, #1b5e20); color: #fff; }
+.btn-grn:hover      { background: linear-gradient(135deg, #388e3c, #2e7d32); }
+.btn-row            { display: flex; gap: 8px; margin-top: 10px; }
+.btn-row .btn       { flex: 1; }
+
+/* ============================================================
+   SETTINGS – people & categories
+   ============================================================ */
+.sec-t {
+  font-size: .76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--g5);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--g2);
+}
+.cat-item  { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--g2); }
+.cat-item:last-child { border-bottom: none; }
+.cat-L     { display: flex; align-items: center; gap: 8px; }
+.cat-dot   { width: 14px; height: 14px; border-radius: 50%; }
+.cat-nm    { font-size: .9rem; font-weight: 600; }
+.btn-rm    { background: none; border: none; color: var(--g4); cursor: pointer; font-size: 1.2rem; padding: 0 4px; line-height: 1; transition: color .15s; }
+.btn-rm:hover { color: var(--red); }
+.cat-add   { display: flex; gap: 8px; margin-top: 10px; }
+.cat-add input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--g3);
+  border-radius: var(--rs);
+  font-size: .88rem;
+  color: var(--g8);
+}
+.cat-add input:focus { outline: none; border-color: var(--red); }
+.btn-ac      { background: var(--red); color: #fff; border: none; border-radius: var(--rs); padding: 8px 14px; cursor: pointer; font-weight: 700; font-size: .9rem; transition: background .15s; }
+.btn-ac:hover { background: var(--red-dk); }
+
+/* ============================================================
+   EXPORT TAB
+   ============================================================ */
+.exp-info {
+  background: var(--g1);
+  border-radius: var(--rs);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: .85rem;
+  color: var(--g6);
+  line-height: 1.55;
+}
+.exp-info ul { padding-left: 18px; margin-top: 5px; }
+.exp-info li { margin-bottom: 3px; }
+.exp-st { text-align: center; margin-top: 10px; font-size: .82rem; color: var(--teal); font-weight: 600; min-height: 1.2em; }
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+.muted { color: var(--g5); font-size: .82rem; }
+.mt8   { margin-top: 8px; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 420px) {
+  .bal-amt    { font-size: 1.85rem; }
+  .paid-opt   { padding: 8px 2px; }
+  .app        { padding: 0 12px; }
+  .f-row      { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="hdr">
+  <div class="hdr-in">
+    <h1>🇯🇵 Japan Trip Expenses</h1>
+    <button class="hdr-btn" onclick="openSet()">⚙️</button>
+  </div>
+</header>
+
+<!-- ============================================================
+     APP BODY
+     ============================================================ -->
+<div class="app">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab on" data-tab="dash">📊 Dashboard</button>
+    <button class="tab"    data-tab="hist">📅 History</button>
+    <button class="tab"    data-tab="exp" >📤 Export</button>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="pane on" id="pane-dash">
+    <div id="bal" class="bal"></div>          <!-- running balance card -->
+    <div id="today-stl"></div>                <!-- today's settlement strip -->
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">Today's Expenses</span>
+        <span id="today-tot" class="muted">JPY 0</span>
+      </div>
+      <div id="today-list"></div>             <!-- rendered by JS -->
+    </div>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div class="pane" id="pane-hist">
+    <div id="hist-list"></div>                <!-- rendered by JS -->
+  </div>
+
+  <!-- ── EXPORT ── -->
+  <div class="pane" id="pane-exp">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Export to Excel</div>
+      <div class="exp-info">
+        The exported file includes three sheets:
+        <ul>
+          <li><strong>Expenses</strong> – every entry with full details</li>
+          <li><strong>Daily Summary</strong> – per-day totals and settlement info</li>
+          <li><strong>Running Balance</strong> – day-by-day accumulated balance</li>
+        </ul>
+      </div>
+      <button class="btn btn-grn" onclick="doExport()">📥 Download Excel</button>
+      <div id="exp-st" class="exp-st"></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ============================================================
+     FAB – quick-add button
+     ============================================================ -->
+<button class="fab" onclick="openAdd()">+</button>
+
+<!-- ============================================================
+     ADD / EDIT EXPENSE  modal
+     ============================================================ -->
+<div class="ov" id="mod-add">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title" id="mod-add-title">Add Expense</div>
+
+    <div class="f-row">
+      <div class="fg">
+        <label>Date</label>
+        <input type="date" class="fi" id="fi-date">
+      </div>
+      <div class="fg">
+        <label>Amount (JPY)</label>
+        <input type="number" class="fi" id="fi-amt" placeholder="0" min="0" step="1" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Description</label>
+      <input type="text" class="fi" id="fi-desc" placeholder="e.g. Dinner at Tsukiji" autocomplete="off">
+    </div>
+
+    <div class="fg">
+      <label>Category</label>
+      <select class="fs" id="fi-cat"></select>
+    </div>
+
+    <div class="fg">
+      <label>Paid By</label>
+      <div class="paid-opts" id="paid-opts"></div>   <!-- rendered by JS -->
+    </div>
+
+    <div class="fg">
+      <label>Expense Type</label>
+      <div class="sp-tog">
+        <div class="sp-opt on" data-st="personal">👤 Personal</div>
+        <div class="sp-opt"    data-st="shared"  >👥 Shared</div>
+      </div>
+    </div>
+
+    <!-- split-ratio section  (hidden until "Shared" is selected) -->
+    <div class="sp-wrap" id="sp-wrap">
+      <div class="sp-mode-row">
+        <label class="flbl">Split Ratio</label>
+        <div class="sp-mode">
+          <button class="sp-mode-opt on" data-sm="pct">%</button>
+          <button class="sp-mode-opt"    data-sm="yen">JPY</button>
+        </div>
+      </div>
+      <div class="sp-ratio">
+        <div class="sriw">
+          <div class="sn" id="sn1">Person 1</div>
+          <div class="sriw-inp">
+            <input type="number" id="fi-s1" value="50" min="0" inputmode="numeric">
+            <span class="pct">%</span>
+          </div>
+        </div>
+        <div class="sp-vs">:</div>
+        <div class="sriw">
+          <div class="sn" id="sn2">Person 2</div>
+          <div class="sriw-inp">
+            <input type="number" id="fi-s2" value="50" min="0" inputmode="numeric">
+            <span class="pct">%</span>
+          </div>
+        </div>
+      </div>
+      <div class="sp-amts">
+        <span id="sa1"></span>
+        <span id="sa2"></span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-sec" onclick="closeAdd()">Cancel</button>
+      <button class="btn btn-pri" id="btn-save" onclick="saveExp()">Add Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SETTINGS  modal
+     ============================================================ -->
+<div class="ov" id="mod-set">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">Settings</div>
+
+    <!-- people names -->
+    <div style="margin-bottom:18px">
+      <div class="sec-t">People</div>
+      <div class="f-row">
+        <div class="fg" style="margin-bottom:0">
+          <label>Person 1 Name</label>
+          <input type="text" class="fi" id="fi-n1" placeholder="e.g. Alice">
+        </div>
+        <div class="fg" style="margin-bottom:0">
+          <label>Person 2 Name</label>
+          <input type="text" class="fi" id="fi-n2" placeholder="e.g. Bob">
+        </div>
+      </div>
+      <p class="muted mt8">Both can pay with <strong>Cash</strong> or <strong>Suica</strong>. Person 1 can also use a <strong>Credit Card</strong>.</p>
+    </div>
+
+    <!-- categories -->
+    <div>
+      <div class="sec-t">Categories</div>
+      <div id="cat-list"></div>               <!-- rendered by JS -->
+      <div class="cat-add">
+        <input type="text" id="fi-newcat" placeholder="New category…">
+        <button class="btn-ac" onclick="addCat()">+</button>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn btn-sec" onclick="closeSet()">Cancel</button>
+      <button class="btn btn-pri" onclick="saveSet()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APPLICATION SCRIPT
+     ============================================================ -->
+<script>
+/* ============================================================
+   STATE  &  STORAGE
+   ============================================================
+   D.exps  – array of expense objects
+   D.stls  – object keyed by "YYYY-MM-DD" → settlement record
+   D.cfg   – { n1, n2, cats:[{name,color}] }
+   ============================================================ */
+
+const K = { e: 'jt_exps', s: 'jt_stls', c: 'jt_cfg' };
+
+const DEF_CATS = [
+  { name: 'Accommodation',  color: '#457b9d' },
+  { name: 'Food & Dining',  color: '#e76f51' },
+  { name: 'Transportation', color: '#2a9d8f' },
+  { name: 'Entertainment',  color: '#e9c46a' },
+  { name: 'Shopping',       color: '#e63946' },
+  { name: 'Healthcare',     color: '#6a4c93' },
+  { name: 'Communication',  color: '#1982c4' },
+  { name: 'Souvenirs',      color: '#8ac926' },
+  { name: 'Other',          color: '#6c757d' }
+];
+
+let D = {
+  exps: [],
+  stls: {},
+  cfg:  { n1: 'Person 1', n2: 'Person 2', cats: DEF_CATS.map(c => ({ ...c })) }
+};
+
+function load() {
+  try {
+    let v;
+    v = localStorage.getItem(K.e);  if (v) D.exps = JSON.parse(v);
+    v = localStorage.getItem(K.s);  if (v) D.stls = JSON.parse(v);
+    v = localStorage.getItem(K.c);
+    if (v) {
+      const p = JSON.parse(v);
+      D.cfg = { ...D.cfg, ...p };
+      if (!p.cats) D.cfg.cats = DEF_CATS.map(c => ({ ...c }));
+    }
+  } catch (e) { console.error('load', e); }
+}
+
+function save() {
+  localStorage.setItem(K.e, JSON.stringify(D.exps));
+  localStorage.setItem(K.s, JSON.stringify(D.stls));
+  localStorage.setItem(K.c, JSON.stringify(D.cfg));
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+function fmtDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** Format number as JPY with commas */
+const fmt = n => 'JPY ' + Math.round(n).toLocaleString();
+
+/** Unique-ish id */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+/** XSS-safe text → HTML */
+const esc = s => { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; };
+
+/** Look up category colour */
+const catCol = name => { const c = D.cfg.cats.find(x => x.name === name); return c ? c.color : '#6c757d'; };
+
+/** Random colour for new categories */
+const randCol = () => ['#e63946','#457b9d','#2a9d8f','#e9c46a','#6a4c93','#1982c4','#8ac926','#e76f51','#f77f00','#3a86ff'][Math.floor(Math.random() * 10)];
+
+/** All unique expense dates, newest first */
+const allDates = () => [...new Set(D.exps.map(e => e.date))].sort().reverse();
+
+/* ============================================================
+   CALCULATIONS
+   ============================================================
+   dayNet(date)  → positive means Person 2 owes Person 1
+                 → negative means Person 1 owes Person 2
+   runBal()      → sum of dayNet across all unsettled days
+   ============================================================ */
+
+function dayNet(date) {
+  let p1ov = 0, p2ov = 0;   // how much each person overpaid
+  D.exps.forEach(e => {
+    if (e.date !== date || !e.split) return;
+    // resolve shares – old data without splitMode defaults to %
+    const sh1 = e.splitMode === 'yen' ? e.s1 : e.amount * e.s1 / 100;
+    const sh2 = e.splitMode === 'yen' ? e.s2 : e.amount * e.s2 / 100;
+    if (e.paidBy === 'p1') p1ov += sh2;   // p1 fronted p2's share
+    else                   p2ov += sh1;   // p2 fronted p1's share
+  });
+  return p1ov - p2ov;
+}
+
+function runBal() {
+  let b = 0;
+  allDates().forEach(d => { if (!D.stls[d] || !D.stls[d].ok) b += dayNet(d); });
+  return b;
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+
+function renderAll() { renderBal(); renderTodayStl(); renderTodayList(); }
+
+// ── balance card ──────────────────────────────────────────────
+function renderBal() {
+  const b  = runBal();
+  const el = document.getElementById('bal');
+
+  if (b === 0) {
+    el.innerHTML = '<div class="bal-in">' +
+      '<div class="bal-lbl">Running Balance</div>' +
+      '<div class="bal-ok">✓ All settled!</div></div>';
+  } else {
+    const abs  = Math.abs(b);
+    const deb  = b > 0 ? D.cfg.n2 : D.cfg.n1;
+    const cred = b > 0 ? D.cfg.n1 : D.cfg.n2;
+    el.innerHTML = '<div class="bal-in">' +
+      '<div class="bal-lbl">Running Balance</div>' +
+      '<div class="bal-amt">' + fmt(abs) + '</div>' +
+      '<div class="bal-dir"><strong>' + esc(deb) + '</strong> owes <strong>' + esc(cred) + '</strong></div></div>';
+  }
+}
+
+// ── today's settlement strip ─────────────────────────────────
+function renderTodayStl() {
+  const el    = document.getElementById('today-stl');
+  const td    = todayStr();
+  const hasSp = D.exps.some(e => e.date === td && e.split);
+
+  if (!hasSp) { el.innerHTML = ''; return; }
+
+  const done = D.stls[td] && D.stls[td].ok;
+  const net  = dayNet(td);
+
+  if (done) {
+    el.innerHTML = '<div class="stl done"><div>' +
+      '<div class="stl-lbl">Today\'s Settlement</div>' +
+      '<div class="stl-amt" style="color:#155724">✓ Settled</div></div></div>';
+  } else if (net === 0) {
+    el.innerHTML = '<div class="stl done"><div>' +
+      '<div class="stl-lbl">Today\'s Settlement</div>' +
+      '<div class="stl-amt" style="color:#155724">Even – no payment needed</div></div></div>';
+  } else {
+    const abs  = Math.abs(net);
+    const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
+    const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+    el.innerHTML =
+      '<div class="stl pend"><div>' +
+        '<div class="stl-lbl">Today\'s Settlement</div>' +
+        '<div class="stl-amt"><strong>' + esc(deb) + '</strong> → <strong>' + esc(cred) + '</strong>: ' + fmt(abs) + '</div>' +
+      '</div>' +
+      '<button class="stl-btn" onclick="settle(\'' + td + '\')">Settle</button></div>';
+  }
+}
+
+// ── today's expense list ─────────────────────────────────────
+function renderTodayList() {
+  const td    = todayStr();
+  const exps  = D.exps.filter(e => e.date === td);
+  const listEl = document.getElementById('today-list');
+  const totEl  = document.getElementById('today-tot');
+
+  if (!exps.length) {
+    listEl.innerHTML = '<div class="empty">No expenses yet today</div>';
+    totEl.textContent = 'JPY 0';
+    return;
+  }
+  totEl.textContent = fmt(exps.reduce((s, e) => s + e.amount, 0));
+  listEl.innerHTML  = exps.map(expHtml).join('');
+}
+
+// ── single expense item HTML ─────────────────────────────────
+function expHtml(e) {
+  const cc    = catCol(e.category);
+  const pName = e.paidBy === 'p1' ? D.cfg.n1 : D.cfg.n2;
+  const tCls  = e.paidBy === 'p1'
+    ? (e.method === 'credit' ? 'p1cr' : e.method === 'suica' ? 'p1s' : 'p1c')
+    : (e.method === 'suica' ? 'p2s' : 'p2c');
+  const mLbl  = e.method === 'credit' ? 'Credit' : e.method === 'suica' ? 'Suica' : 'Cash';
+
+  let spTag = '', spSub = '';
+  if (e.split) {
+    // share amounts depend on whether split was entered as % or ¥
+    const a1 = e.splitMode === 'yen' ? e.s1 : e.amount * e.s1 / 100;
+    const a2 = e.splitMode === 'yen' ? e.s2 : e.amount * e.s2 / 100;
+    spTag = e.splitMode === 'yen'
+      ? '<span class="tag sp">Split</span>'
+      : '<span class="tag sp">Split ' + e.s1 + ':' + e.s2 + '</span>';
+    spSub = '<div class="ei-sub">' + esc(D.cfg.n1) + ': ' + fmt(a1) +
+            ' / ' + esc(D.cfg.n2) + ': ' + fmt(a2) + '</div>';
+  }
+
+  return '<div class="ei">' +
+    '<div class="ei-L">' +
+      '<div class="ei-desc">' + esc(e.desc) + '</div>' +
+      '<div class="ei-tags">' +
+        '<span class="tag cat" style="background:' + cc + '18;color:' + cc + '">' + esc(e.category) + '</span>' +
+        '<span class="tag ' + tCls + '">' + esc(pName) + ' (' + mLbl + ')</span>' +
+        spTag +
+      '</div>' +
+    '</div>' +
+    '<div class="ei-R">' +
+      '<div class="ei-amt">' + fmt(e.amount) + '</div>' +
+      spSub +
+      '<div class="ei-acts">' +
+        '<button class="ic" onclick="openAdd(\'' + e.id + '\')">✏️</button>' +
+        '<button class="ic" onclick="delExp(\'' + e.id + '\')">🗑</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+// ── history tab ──────────────────────────────────────────────
+function renderHistory() {
+  const dates = allDates();
+  const td    = todayStr();
+  const el    = document.getElementById('hist-list');
+
+  if (!dates.length) { el.innerHTML = '<div class="empty">No expense history yet</div>'; return; }
+
+  el.innerHTML = dates.map(date => {
+    const exps  = D.exps.filter(e => e.date === date);
+    const total = exps.reduce((s, e) => s + e.amount, 0);
+    const net   = dayNet(date);
+    const done  = D.stls[date] && D.stls[date].ok;
+    const isToday = (date === td);
+    const hasSp   = exps.some(e => e.split);
+
+    // status badge
+    let badge = '';
+    if (hasSp) badge = done ? '<span class="sb done">Settled</span>' : '<span class="sb pend">Pending</span>';
+
+    // settlement row inside expanded body
+    let stlRow = '';
+    if (hasSp && !done) {
+      if (net !== 0) {
+        const abs  = Math.abs(net);
+        const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
+        const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+        stlRow =
+          '<div class="hday-stl">' +
+            '<div>' +
+              '<div class="stl-lbl">Settlement needed</div>' +
+              '<div class="stl-amt"><strong>' + esc(deb) + '</strong> → <strong>' + esc(cred) + '</strong></div>' +
+            '</div>' +
+            '<div style="text-align:right">' +
+              '<div class="stl-amt">' + fmt(abs) + '</div>' +
+              '<button class="stl-btn sm" onclick="settle(\'' + date + '\')">Settle</button>' +
+            '</div>' +
+          '</div>';
+      } else {
+        stlRow = '<div class="hday-stl"><div class="stl-lbl" style="color:#2e7d32">Even – no payment needed</div></div>';
+      }
+    }
+
+    return '<div class="hday">' +
+      '<div class="hday-hd" onclick="toggleH(\'' + date + '\')">' +
+        '<div class="hday-hd-L">' +
+          '<div>' +
+            '<div class="hday-date">' + (isToday ? 'Today' : fmtDate(date)) + '</div>' +
+            '<div class="hday-dsub">' + (isToday ? fmtDate(date) : date) + '</div>' +
+          '</div>' +
+          badge +
+        '</div>' +
+        '<div class="hday-hd-R">' +
+          '<span style="font-weight:700;font-size:.93rem">' + fmt(total) + '</span>' +
+          '<span class="chev" id="chv-' + date + '">▼</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="hday-body" id="hb-' + date + '">' +
+        exps.map(expHtml).join('') +
+        stlRow +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
+    this.classList.add('on');
+    document.getElementById('pane-' + this.dataset.tab).classList.add('on');
+    if (this.dataset.tab === 'hist') renderHistory();
+  });
+});
+
+/* ============================================================
+   ADD  /  EDIT  EXPENSE
+   ============================================================ */
+let editId = null;                          // null = new; string = editing
+let selP   = { p: 'p1', m: 'cash' };       // currently selected paid-by
+let selT   = 'personal';                    // 'personal' | 'shared'
+let selSM  = 'pct';                         // split mode: 'pct' | 'yen'
+
+function openAdd(id) {
+  editId = id || null;
+  populateCatSel();
+  renderPaidOpts();
+
+  if (editId) {
+    // ── editing existing ──
+    const e = D.exps.find(x => x.id === editId);
+    if (!e) return;
+    document.getElementById('fi-date').value = e.date;
+    document.getElementById('fi-amt').value  = e.amount;
+    document.getElementById('fi-desc').value = e.desc;
+    document.getElementById('fi-cat').value  = e.category;
+    selPaid(e.paidBy, e.method);
+    selType(e.split ? 'shared' : 'personal');
+    if (e.split) {
+      selSplitMode(e.splitMode || 'pct', true);   // restore mode, skip conversion
+      document.getElementById('fi-s1').value = e.s1;
+      document.getElementById('fi-s2').value = e.s2;
+      updSpAmts();
+    }
+    document.getElementById('mod-add-title').textContent = 'Edit Expense';
+    document.getElementById('btn-save').textContent      = 'Update';
+  } else {
+    // ── new expense ──
+    document.getElementById('fi-date').value = todayStr();
+    document.getElementById('fi-amt').value  = '';
+    document.getElementById('fi-desc').value = '';
+    if (D.cfg.cats.length) document.getElementById('fi-cat').value = D.cfg.cats[0].name;
+    selPaid('p1', 'cash');
+    selType('personal');
+    selSplitMode('pct', true);
+    document.getElementById('fi-s1').value = 50;
+    document.getElementById('fi-s2').value = 50;
+    updSpAmts();
+    document.getElementById('mod-add-title').textContent = 'Add Expense';
+    document.getElementById('btn-save').textContent      = 'Add Expense';
+  }
+  document.getElementById('mod-add').classList.add('on');
+}
+
+function closeAdd() { document.getElementById('mod-add').classList.remove('on'); }
+
+// ── paid-by cards ────────────────────────────────────────────
+function renderPaidOpts() {
+  document.getElementById('paid-opts').innerHTML =
+    '<div class="paid-opt on" data-p="p1" data-m="cash"   onclick="selPaid(\'p1\',\'cash\')">  <span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Cash</span></div>' +
+    '<div class="paid-opt"    data-p="p1" data-m="credit" onclick="selPaid(\'p1\',\'credit\')"><span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Credit</span></div>' +
+    '<div class="paid-opt"    data-p="p1" data-m="suica"  onclick="selPaid(\'p1\',\'suica\')"> <span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Suica</span></div>' +
+    '<div class="paid-opt"    data-p="p2" data-m="cash"   onclick="selPaid(\'p2\',\'cash\')">  <span class="pn">' + esc(D.cfg.n2) + '</span><span class="pm">Cash</span></div>' +
+    '<div class="paid-opt"    data-p="p2" data-m="suica"  onclick="selPaid(\'p2\',\'suica\')"> <span class="pn">' + esc(D.cfg.n2) + '</span><span class="pm">Suica</span></div>';
+}
+
+function selPaid(p, m) {
+  selP = { p, m };
+  document.querySelectorAll('.paid-opt').forEach(el =>
+    el.classList.toggle('on', el.dataset.p === p && el.dataset.m === m));
+}
+
+// ── personal / shared toggle ─────────────────────────────────
+function selType(t) {
+  selT = t;
+  document.querySelectorAll('.sp-opt').forEach(el => el.classList.toggle('on', el.dataset.st === t));
+  document.getElementById('sp-wrap').classList.toggle('vis', t === 'shared');
+  updSpAmts();
+}
+document.querySelectorAll('.sp-opt').forEach(el =>
+  el.addEventListener('click', function() { selType(this.dataset.st); })
+);
+
+// ── split-mode toggle (% ↔ ¥) ────────────────────────────────
+document.querySelectorAll('.sp-mode-opt').forEach(el =>
+  el.addEventListener('click', function() { selSplitMode(this.dataset.sm); })
+);
+
+/** Switch split-mode.  skipConvert = true when restoring saved data. */
+function selSplitMode(mode, skipConvert) {
+  const amt = parseFloat(document.getElementById('fi-amt').value) || 0;
+  if (!skipConvert && mode !== selSM) {
+    if (amt > 0) {
+      if (selSM === 'pct' && mode === 'yen') {
+        const pct = parseInt(document.getElementById('fi-s1').value) || 0;
+        document.getElementById('fi-s1').value = Math.round(amt * pct / 100);
+        document.getElementById('fi-s2').value = Math.round(amt * (100 - pct) / 100);
+      } else if (selSM === 'yen' && mode === 'pct') {
+        const y1 = parseFloat(document.getElementById('fi-s1').value) || 0;
+        document.getElementById('fi-s1').value = Math.round(y1 / amt * 100);
+        document.getElementById('fi-s2').value = 100 - Math.round(y1 / amt * 100);
+      }
+    } else {
+      // no amount yet – reset to sensible defaults
+      document.getElementById('fi-s1').value = mode === 'pct' ? 50 : 0;
+      document.getElementById('fi-s2').value = mode === 'pct' ? 50 : 0;
+    }
+  }
+  selSM = mode;
+  document.querySelectorAll('.sp-mode-opt').forEach(el => el.classList.toggle('on', el.dataset.sm === mode));
+  document.querySelectorAll('.sriw-inp .pct').forEach(el => { el.textContent = mode === 'pct' ? '%' : 'JPY'; });
+  updSpAmts();
+}
+
+// ── split-ratio inputs ────────────────────────────────────────
+document.getElementById('fi-s1').addEventListener('input', function() {
+  const amt = parseFloat(document.getElementById('fi-amt').value) || 0;
+  if (selSM === 'pct') {
+    let v = Math.min(100, Math.max(0, parseInt(this.value) || 0));
+    this.value = v;
+    document.getElementById('fi-s2').value = 100 - v;
+  } else {
+    let v = Math.max(0, parseFloat(this.value) || 0);
+    if (amt > 0) v = Math.min(amt, v);
+    this.value = Math.round(v);
+    document.getElementById('fi-s2').value = Math.round(Math.max(0, amt - v));
+  }
+  updSpAmts();
+});
+document.getElementById('fi-s2').addEventListener('input', function() {
+  const amt = parseFloat(document.getElementById('fi-amt').value) || 0;
+  if (selSM === 'pct') {
+    let v = Math.min(100, Math.max(0, parseInt(this.value) || 0));
+    this.value = v;
+    document.getElementById('fi-s1').value = 100 - v;
+  } else {
+    let v = Math.max(0, parseFloat(this.value) || 0);
+    if (amt > 0) v = Math.min(amt, v);
+    this.value = Math.round(v);
+    document.getElementById('fi-s1').value = Math.round(Math.max(0, amt - v));
+  }
+  updSpAmts();
+});
+document.getElementById('fi-amt').addEventListener('input', function() {
+  // in ¥ mode: clamp s1 to new total, recalculate s2
+  if (selSM === 'yen') {
+    const amt = parseFloat(this.value) || 0;
+    let s1  = parseFloat(document.getElementById('fi-s1').value) || 0;
+    if (s1 > amt) s1 = amt;
+    document.getElementById('fi-s1').value = Math.round(s1);
+    document.getElementById('fi-s2').value = Math.round(amt - s1);
+  }
+  updSpAmts();
+});
+
+function updSpAmts() {
+  const amt = parseFloat(document.getElementById('fi-amt').value) || 0;
+  document.getElementById('sn1').textContent = D.cfg.n1;
+  document.getElementById('sn2').textContent = D.cfg.n2;
+  if (selSM === 'pct') {
+    const s1 = parseInt(document.getElementById('fi-s1').value) || 0;
+    document.getElementById('sa1').textContent = D.cfg.n1 + ': ' + fmt(amt * s1 / 100);
+    document.getElementById('sa2').textContent = D.cfg.n2 + ': ' + fmt(amt * (100 - s1) / 100);
+  } else {
+    // in ¥ mode: show percentages as the summary (inverse info)
+    const y1 = parseFloat(document.getElementById('fi-s1').value) || 0;
+    const y2 = parseFloat(document.getElementById('fi-s2').value) || 0;
+    document.getElementById('sa1').textContent = D.cfg.n1 + ': ' + (amt > 0 ? Math.round(y1 / amt * 100) : 0) + '%';
+    document.getElementById('sa2').textContent = D.cfg.n2 + ': ' + (amt > 0 ? Math.round(y2 / amt * 100) : 0) + '%';
+  }
+}
+
+function populateCatSel() {
+  document.getElementById('fi-cat').innerHTML =
+    D.cfg.cats.map(c => '<option value="' + esc(c.name) + '">' + esc(c.name) + '</option>').join('');
+}
+
+// ── save / delete ────────────────────────────────────────────
+function saveExp() {
+  const date = document.getElementById('fi-date').value;
+  const amt  = parseFloat(document.getElementById('fi-amt').value);
+  const desc = document.getElementById('fi-desc').value.trim();
+  const cat  = document.getElementById('fi-cat').value;
+  const isSp = (selT === 'shared');
+
+  // basic validation
+  if (!date)            { alert('Please pick a date.');     return; }
+  if (!amt || amt <= 0) { alert('Enter a valid amount.');   return; }
+  if (!desc)            { alert('Enter a description.');    return; }
+
+  // resolve split values based on current mode
+  let s1v, s2v;
+  if (isSp) {
+    if (selSM === 'pct') {
+      s1v = parseInt(document.getElementById('fi-s1').value) || 0;
+      s2v = 100 - s1v;
+    } else {
+      s1v = parseFloat(document.getElementById('fi-s1').value) || 0;
+      s2v = parseFloat(document.getElementById('fi-s2').value) || 0;
+    }
+  }
+
+  const obj = {
+    id:        editId || uid(),
+    date,
+    desc,
+    category:  cat,
+    amount:    amt,
+    paidBy:    selP.p,
+    method:    selP.m,
+    split:     isSp,
+    splitMode: isSp ? selSM : 'pct',
+    s1:        isSp ? s1v : (selP.p === 'p1' ? 100 : 0),
+    s2:        isSp ? s2v : (selP.p === 'p2' ? 100 : 0)
+  };
+
+  if (editId) {
+    const i = D.exps.findIndex(e => e.id === editId);
+    if (i !== -1) D.exps[i] = obj;
+  } else {
+    D.exps.push(obj);
+  }
+
+  save(); closeAdd(); renderAll();
+  if (document.getElementById('pane-hist').classList.contains('on')) renderHistory();
+}
+
+function delExp(id) {
+  if (!confirm('Delete this expense?')) return;
+  D.exps = D.exps.filter(e => e.id !== id);
+  save(); renderAll();
+  if (document.getElementById('pane-hist').classList.contains('on')) renderHistory();
+}
+
+/* ============================================================
+   SETTLEMENT
+   ============================================================ */
+function settle(date) {
+  const net = dayNet(date);
+  if (net !== 0) {
+    const abs  = Math.abs(net);
+    const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
+    const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+    if (!confirm(deb + ' pays ' + cred + ' ' + fmt(abs) + ' to settle?')) return;
+  }
+  D.stls[date] = { ok: true, amt: Math.abs(net), to: net > 0 ? 'p1' : 'p2', at: new Date().toISOString() };
+  save(); renderAll();
+  if (document.getElementById('pane-hist').classList.contains('on')) renderHistory();
+}
+
+/* ============================================================
+   HISTORY EXPAND / COLLAPSE
+   ============================================================ */
+function toggleH(date) {
+  document.getElementById('hb-'  + date).classList.toggle('open');
+  document.getElementById('chv-' + date).classList.toggle('open');
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function openSet() {
+  document.getElementById('fi-n1').value = D.cfg.n1;
+  document.getElementById('fi-n2').value = D.cfg.n2;
+  renderCatList();
+  document.getElementById('mod-set').classList.add('on');
+}
+function closeSet() { document.getElementById('mod-set').classList.remove('on'); }
+
+function saveSet() {
+  D.cfg.n1 = document.getElementById('fi-n1').value.trim() || 'Person 1';
+  D.cfg.n2 = document.getElementById('fi-n2').value.trim() || 'Person 2';
+  save(); closeSet(); renderAll();
+}
+
+function renderCatList() {
+  document.getElementById('cat-list').innerHTML = D.cfg.cats.map((c, i) =>
+    '<div class="cat-item">' +
+      '<div class="cat-L">' +
+        '<div class="cat-dot" style="background:' + c.color + '"></div>' +
+        '<span class="cat-nm">' + esc(c.name) + '</span>' +
+      '</div>' +
+      '<button class="btn-rm" onclick="rmCat(' + i + ')">×</button>' +
+    '</div>'
+  ).join('');
+}
+
+function addCat() {
+  const inp  = document.getElementById('fi-newcat');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (D.cfg.cats.some(c => c.name.toLowerCase() === name.toLowerCase())) { alert('Category already exists.'); return; }
+  D.cfg.cats.push({ name, color: randCol() });
+  inp.value = '';
+  renderCatList();
+}
+
+function rmCat(i) {
+  if (D.cfg.cats.length <= 1) { alert('Keep at least one category.'); return; }
+  D.cfg.cats.splice(i, 1);
+  renderCatList();
+}
+
+/* ============================================================
+   CLOSE MODALS ON BACKDROP CLICK
+   ============================================================ */
+document.getElementById('mod-add').addEventListener('click', function(e) { if (e.target === this) closeAdd(); });
+document.getElementById('mod-set').addEventListener('click', function(e) { if (e.target === this) closeSet(); });
+
+/* ============================================================
+   EXPORT  TO  EXCEL  (xlsx loaded lazily from CDN)
+   Falls back to CSV automatically when offline / CDN unavailable.
+   ============================================================ */
+function loadXLSX() {
+  return new Promise((res, rej) => {
+    if (window.XLSX) { res(); return; }
+    const s       = document.createElement('script');
+    s.src         = 'https://cdn.jsdelivr.net/npm/xlsx@0.20.11/xlsx.min.js';
+    s.onload      = res;
+    s.onerror     = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function doExport() {
+  const st = document.getElementById('exp-st');
+  if (!D.exps.length) { st.textContent = 'Nothing to export yet.'; return; }
+  st.textContent = 'Preparing…';
+
+  try { await loadXLSX(); }
+  catch (e) { exportCSV(); return; }        // offline fallback
+
+  const wb    = XLSX.utils.book_new();
+  const dates = allDates().reverse();        // ascending for sheets
+
+  // ── Sheet 1: Expenses ──────────────────────────────────────
+  const h1 = ['Date', 'Description', 'Category', 'Amount (JPY)', 'Paid By', 'Payment Method',
+              'Shared?', D.cfg.n1 + ' %', D.cfg.n2 + ' %', D.cfg.n1 + ' Share (JPY)', D.cfg.n2 + ' Share (JPY)'];
+  const r1 = D.exps.map(e => {
+    const mLabel = e.method === 'credit' ? 'Credit Card' : e.method === 'suica' ? 'Suica' : 'Cash';
+    const a1 = e.split ? (e.splitMode === 'yen' ? e.s1 : Math.round(e.amount * e.s1 / 100)) : (e.paidBy === 'p1' ? e.amount : 0);
+    const a2 = e.split ? (e.splitMode === 'yen' ? e.s2 : Math.round(e.amount * e.s2 / 100)) : (e.paidBy === 'p2' ? e.amount : 0);
+    const p1pct = e.split ? (e.splitMode === 'yen' ? (e.amount > 0 ? Math.round(e.s1 / e.amount * 100) : 0) : e.s1) : '';
+    const p2pct = e.split ? (e.splitMode === 'yen' ? (e.amount > 0 ? Math.round(e.s2 / e.amount * 100) : 0) : e.s2) : '';
+    return [e.date, e.desc, e.category, e.amount,
+            e.paidBy === 'p1' ? D.cfg.n1 : D.cfg.n2, mLabel,
+            e.split ? 'Yes' : 'No', p1pct, p2pct, a1, a2];
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet([h1, ...r1]);
+  ws1['!cols'] = h1.map(h => ({ wch: Math.max(h.length + 2, 14) }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Expenses');
+
+  // ── Sheet 2: Daily Summary ─────────────────────────────────
+  const h2 = ['Date', 'Total Spent', D.cfg.n1 + ' Paid', D.cfg.n2 + ' Paid',
+              'Settlement Amount', 'Direction', 'Settled?'];
+  const r2 = dates.map(d => {
+    const exps = D.exps.filter(e => e.date === d);
+    const tot  = exps.reduce((s, e) => s + e.amount, 0);
+    const p1p  = exps.filter(e => e.paidBy === 'p1').reduce((s, e) => s + e.amount, 0);
+    const p2p  = exps.filter(e => e.paidBy === 'p2').reduce((s, e) => s + e.amount, 0);
+    const net  = dayNet(d);
+    const done = D.stls[d] && D.stls[d].ok;
+    const dir  = net > 0 ? D.cfg.n2 + ' → ' + D.cfg.n1
+               : net < 0 ? D.cfg.n1 + ' → ' + D.cfg.n2
+               : 'Even';
+    return [d, tot, p1p, p2p, Math.abs(net), dir, done ? 'Yes' : 'No'];
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet([h2, ...r2]);
+  ws2['!cols'] = h2.map(h => ({ wch: Math.max(h.length + 2, 18) }));
+  XLSX.utils.book_append_sheet(wb, ws2, 'Daily Summary');
+
+  // ── Sheet 3: Running Balance ───────────────────────────────
+  const h3 = ['Date', 'Daily Net', 'Settled?', 'Running Balance', 'Direction'];
+  let rb   = 0;
+  const r3 = dates.map(d => {
+    const net  = dayNet(d);
+    const done = D.stls[d] && D.stls[d].ok;
+    if (!done) rb += net;                    // only unsettled days accumulate
+    const dir  = rb > 0 ? D.cfg.n2 + ' owes ' + D.cfg.n1
+               : rb < 0 ? D.cfg.n1 + ' owes ' + D.cfg.n2
+               : 'Even';
+    return [d, net, done ? 'Yes' : 'No', Math.abs(rb), dir];
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet([h3, ...r3]);
+  ws3['!cols'] = h3.map(h => ({ wch: Math.max(h.length + 2, 22) }));
+  XLSX.utils.book_append_sheet(wb, ws3, 'Running Balance');
+
+  // ── write ──
+  XLSX.writeFile(wb, 'Japan_Trip_Expenses.xlsx');
+  st.textContent = '✓ Downloaded successfully!';
+  setTimeout(() => { st.textContent = ''; }, 3500);
+}
+
+// ── CSV fallback (works 100 % offline) ───────────────────────
+function exportCSV() {
+  const h    = ['Date', 'Description', 'Category', 'Amount', 'Paid By', 'Method', 'Shared', 'Split Mode', D.cfg.n1 + ' Share', D.cfg.n2 + ' Share'];
+  const rows = D.exps.map(e => {
+    const mLabel = e.method === 'credit' ? 'Credit Card' : e.method === 'suica' ? 'Suica' : 'Cash';
+    const a1 = e.split ? (e.splitMode === 'yen' ? e.s1 : Math.round(e.amount * e.s1 / 100)) : (e.paidBy === 'p1' ? e.amount : 0);
+    const a2 = e.split ? (e.splitMode === 'yen' ? e.s2 : Math.round(e.amount * e.s2 / 100)) : (e.paidBy === 'p2' ? e.amount : 0);
+    return [e.date, e.desc, e.category, e.amount,
+            e.paidBy === 'p1' ? D.cfg.n1 : D.cfg.n2, mLabel,
+            e.split ? 'Yes' : 'No', e.split ? (e.splitMode === 'yen' ? 'JPY' : '%') : '',
+            a1, a2];
+  });
+  const csv  = [h, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'Japan_Trip_Expenses.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  document.getElementById('exp-st').textContent = '✓ Downloaded as CSV (Excel library unavailable – you may be offline)';
+  setTimeout(() => { document.getElementById('exp-st').textContent = ''; }, 4500);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => { load(); renderAll(); });
+
+/* ============================================================
+   SERVICE WORKER REGISTRATION (PWA)
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>

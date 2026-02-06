@@ -1,0 +1,44 @@
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+*~
+
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Personal files (not part of expense tracker project)
+.claude/
+.claude.json*
+.anaconda*/
+.conda/
+.condarc
+.continuum/
+.jupyter/
+.keras/
+.local/
+.matplotlib/
+.python_history
+.spyder-py3/
+anaconda3/
+Desktop/
+Documents/
+Downloads/
+Pictures/
+Videos/
+Music/
+OneDrive/
