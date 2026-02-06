@@ -875,8 +875,22 @@ function runBal() {
 function personTotals() {
   let p1 = 0, p2 = 0;
   D.exps.forEach(e => {
-    if (e.paidBy === 'p1') p1 += e.amount;
-    else                   p2 += e.amount;
+    if (e.split) {
+      // For shared expenses, check if settled
+      const stl = D.stls[e.date];
+      if (stl && stl.ok) {
+        // Settled: add each person's share
+        const sh1 = e.splitMode === 'yen' ? e.s1 : e.amount * e.s1 / 100;
+        const sh2 = e.splitMode === 'yen' ? e.s2 : e.amount * e.s2 / 100;
+        p1 += sh1;
+        p2 += sh2;
+      }
+      // If not settled, don't count in totals yet
+    } else {
+      // Personal expense: add full amount to whoever paid
+      if (e.paidBy === 'p1') p1 += e.amount;
+      else                   p2 += e.amount;
+    }
   });
   return { p1, p2 };
 }
