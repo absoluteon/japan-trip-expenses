@@ -855,7 +855,19 @@ function dayNet(date) {
 
 function runBal() {
   let b = 0;
-  allDates().forEach(d => { if (!D.stls[d] || !D.stls[d].ok) b += dayNet(d); });
+  allDates().forEach(d => {
+    const net = dayNet(d);
+    const stl = D.stls[d];
+    if (!stl) {
+      // not settled at all
+      b += net;
+    } else if (!stl.ok) {
+      // partially settled - subtract settlement amount from net
+      const remaining = Math.abs(net) - (stl.amt || 0);
+      b += net > 0 ? remaining : -remaining;
+    }
+    // if fully settled (stl.ok === true), add nothing
+  });
   return b;
 }
 
@@ -928,21 +940,36 @@ function renderTodayStl() {
 
   if (!hasSp) { el.innerHTML = ''; return; }
 
-  const done = D.stls[td] && D.stls[td].ok;
+  const stl  = D.stls[td];
   const net  = dayNet(td);
+  const abs  = Math.abs(net);
 
-  if (done) {
-    el.innerHTML = '<div class="stl done"><div>' +
-      '<div class="stl-lbl">Today\'s Settlement</div>' +
-      '<div class="stl-amt" style="color:#155724">✓ Settled</div></div></div>';
-  } else if (net === 0) {
+  if (net === 0) {
     el.innerHTML = '<div class="stl done"><div>' +
       '<div class="stl-lbl">Today\'s Settlement</div>' +
       '<div class="stl-amt" style="color:#155724">Even – no payment needed</div></div></div>';
+    return;
+  }
+
+  const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
+  const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+
+  if (stl && stl.ok) {
+    // Fully settled
+    el.innerHTML = '<div class="stl done"><div>' +
+      '<div class="stl-lbl">Today\'s Settlement</div>' +
+      '<div class="stl-amt" style="color:#155724">✓ Settled (' + fmt(stl.amt) + ')</div></div></div>';
+  } else if (stl && !stl.ok) {
+    // Partially settled
+    const remaining = abs - (stl.amt || 0);
+    el.innerHTML =
+      '<div class="stl pend"><div>' +
+        '<div class="stl-lbl">Today\'s Settlement (Partial: ' + fmt(stl.amt) + ' paid)</div>' +
+        '<div class="stl-amt"><strong>' + esc(deb) + '</strong> → <strong>' + esc(cred) + '</strong>: ' + fmt(remaining) + ' remaining</div>' +
+      '</div>' +
+      '<button class="stl-btn" onclick="settle(\'' + td + '\')">Settle</button></div>';
   } else {
-    const abs  = Math.abs(net);
-    const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
-    const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+    // Not settled
     el.innerHTML =
       '<div class="stl pend"><div>' +
         '<div class="stl-lbl">Today\'s Settlement</div>' +
@@ -975,7 +1002,7 @@ function expHtml(e) {
   const tCls  = e.paidBy === 'p1'
     ? (e.method === 'credit' ? 'p1cr' : e.method === 'suica' ? 'p1s' : 'p1c')
     : (e.method === 'suica' ? 'p2s' : 'p2c');
-  const mLbl  = e.method === 'credit' ? 'Credit' : e.method === 'suica' ? 'Suica' : 'Cash';
+  const mLbl  = e.method === 'credit' ? 'CC' : e.method === 'suica' ? 'Suica' : 'Cash';
 
   let spTag = '', spSub = '';
   if (e.split) {
@@ -1021,29 +1048,37 @@ function renderHistory() {
     const exps  = D.exps.filter(e => e.date === date);
     const total = exps.reduce((s, e) => s + e.amount, 0);
     const net   = dayNet(date);
-    const done  = D.stls[date] && D.stls[date].ok;
+    const stl   = D.stls[date];
+    const done  = stl && stl.ok;
+    const partial = stl && !stl.ok;
     const isToday = (date === td);
     const hasSp   = exps.some(e => e.split);
 
     // status badge
     let badge = '';
-    if (hasSp) badge = done ? '<span class="sb done">Settled</span>' : '<span class="sb pend">Pending</span>';
+    if (hasSp) {
+      if (done) badge = '<span class="sb done">Settled</span>';
+      else if (partial) badge = '<span class="sb" style="background:#fff3cd;color:#856404;border-color:#ffc107">Partial</span>';
+      else badge = '<span class="sb pend">Pending</span>';
+    }
 
     // settlement row inside expanded body
     let stlRow = '';
     if (hasSp && !done) {
       if (net !== 0) {
         const abs  = Math.abs(net);
+        const remaining = partial ? abs - (stl.amt || 0) : abs;
         const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
         const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+        const lblText = partial ? 'Remaining settlement (' + fmt(stl.amt) + ' paid)' : 'Settlement needed';
         stlRow =
           '<div class="hday-stl">' +
             '<div>' +
-              '<div class="stl-lbl">Settlement needed</div>' +
+              '<div class="stl-lbl">' + lblText + '</div>' +
               '<div class="stl-amt"><strong>' + esc(deb) + '</strong> → <strong>' + esc(cred) + '</strong></div>' +
             '</div>' +
             '<div style="text-align:right">' +
-              '<div class="stl-amt">' + fmt(abs) + '</div>' +
+              '<div class="stl-amt">' + fmt(remaining) + '</div>' +
               '<button class="stl-btn sm" onclick="settle(\'' + date + '\')">Settle</button>' +
             '</div>' +
           '</div>';
@@ -1142,7 +1177,7 @@ function closeAdd() { document.getElementById('mod-add').classList.remove('on');
 function renderPaidOpts() {
   document.getElementById('paid-opts').innerHTML =
     '<div class="paid-opt on" data-p="p1" data-m="cash"   onclick="selPaid(\'p1\',\'cash\')">  <span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Cash</span></div>' +
-    '<div class="paid-opt"    data-p="p1" data-m="credit" onclick="selPaid(\'p1\',\'credit\')"><span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Credit</span></div>' +
+    '<div class="paid-opt"    data-p="p1" data-m="credit" onclick="selPaid(\'p1\',\'credit\')"><span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">CC</span></div>' +
     '<div class="paid-opt"    data-p="p1" data-m="suica"  onclick="selPaid(\'p1\',\'suica\')"> <span class="pn">' + esc(D.cfg.n1) + '</span><span class="pm">Suica</span></div>' +
     '<div class="paid-opt"    data-p="p2" data-m="cash"   onclick="selPaid(\'p2\',\'cash\')">  <span class="pn">' + esc(D.cfg.n2) + '</span><span class="pm">Cash</span></div>' +
     '<div class="paid-opt"    data-p="p2" data-m="suica"  onclick="selPaid(\'p2\',\'suica\')"> <span class="pn">' + esc(D.cfg.n2) + '</span><span class="pm">Suica</span></div>';
@@ -1321,13 +1356,47 @@ function delExp(id) {
    ============================================================ */
 function settle(date) {
   const net = dayNet(date);
-  if (net !== 0) {
-    const abs  = Math.abs(net);
-    const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
-    const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
-    if (!confirm(deb + ' pays ' + cred + ' ' + fmt(abs) + ' to settle?')) return;
+  if (net === 0) {
+    D.stls[date] = { ok: true, amt: 0, to: 'p1', at: new Date().toISOString() };
+    save(); renderAll();
+    if (document.getElementById('pane-hist').classList.contains('on')) renderHistory();
+    return;
   }
-  D.stls[date] = { ok: true, amt: Math.abs(net), to: net > 0 ? 'p1' : 'p2', at: new Date().toISOString() };
+
+  const abs  = Math.abs(net);
+  const deb  = net > 0 ? D.cfg.n2 : D.cfg.n1;
+  const cred = net > 0 ? D.cfg.n1 : D.cfg.n2;
+
+  // Check for existing partial settlement
+  const existingStl = D.stls[date];
+  const alreadyPaid = (existingStl && !existingStl.ok) ? existingStl.amt : 0;
+  const remaining = abs - alreadyPaid;
+
+  if (remaining <= 0) {
+    alert('Already fully settled!');
+    return;
+  }
+
+  const msg = alreadyPaid > 0
+    ? deb + ' pays ' + cred + ' ' + fmt(remaining) + ' (remaining of ' + fmt(abs) + ').\n\nClick OK for FULL settlement\nClick Cancel for PARTIAL settlement'
+    : deb + ' pays ' + cred + ' ' + fmt(abs) + '.\n\nClick OK for FULL settlement\nClick Cancel for PARTIAL settlement';
+
+  // Ask for full or partial settlement
+  const choice = confirm(msg);
+
+  let settleAmt = remaining;
+  if (!choice) {
+    // Partial settlement
+    const input = prompt('Enter partial settlement amount (JPY):', Math.round(remaining / 2));
+    if (input === null) return;  // cancelled
+    settleAmt = parseFloat(input) || 0;
+    if (settleAmt <= 0) { alert('Invalid amount'); return; }
+    if (settleAmt > remaining) settleAmt = remaining;  // cap at remaining amount
+  }
+
+  const totalPaid = alreadyPaid + settleAmt;
+  const isFullySettled = (totalPaid >= abs);
+  D.stls[date] = { ok: isFullySettled, amt: totalPaid, to: net > 0 ? 'p1' : 'p2', at: new Date().toISOString() };
   save(); renderAll();
   if (document.getElementById('pane-hist').classList.contains('on')) renderHistory();
 }
